@@ -20,6 +20,7 @@
     <div id="adminPanel" class="hidden mb-6 space-y-4">
       <div class="mb-2 text-green-400">✅ Admin mode activated</div>
 
+      <!-- Add Tray -->
       <div class="bg-white dark:bg-gray-800 p-4 rounded shadow space-y-2">
         <h2 class="font-bold text-lg">➕ Add Tray</h2>
         <input id="trayName" type="text" placeholder="Tray Name" class="w-full p-2 border rounded dark:bg-gray-700" />
@@ -29,6 +30,7 @@
         <button id="addTrayBtn" class="w-full px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">Add Tray</button>
       </div>
 
+      <!-- Add Instrument -->
       <div class="bg-white dark:bg-gray-800 p-4 rounded shadow space-y-2">
         <h2 class="font-bold text-lg">➕ Add Instrument</h2>
         <input id="instrumentName" type="text" placeholder="Instrument Name" class="w-full p-2 border rounded dark:bg-gray-700" />
@@ -36,6 +38,14 @@
         <input id="instrumentImageUrl" type="text" placeholder="Image URL (optional)" class="w-full p-2 border rounded dark:bg-gray-700" />
         <input id="instrumentImageFile" type="file" accept="image/*" class="w-full p-2 dark:bg-gray-700" />
         <button id="addInstrumentBtn" class="w-full px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">Add Instrument</button>
+      </div>
+
+      <!-- Link Instrument to Tray -->
+      <div class="bg-white dark:bg-gray-800 p-4 rounded shadow space-y-2">
+        <h2 class="font-bold text-lg">🔗 Link Instrument to Tray</h2>
+        <select id="traySelect" class="w-full p-2 border rounded dark:bg-gray-700"></select>
+        <select id="instrumentSelect" class="w-full p-2 border rounded dark:bg-gray-700"></select>
+        <button id="linkBtn" class="w-full px-4 py-2 bg-purple-700 text-white rounded hover:bg-purple-800">Link</button>
       </div>
     </div>
 
@@ -51,30 +61,48 @@
   </main>
 
   <script>
-    const supabaseUrl = 'https://rjnscoaubnaioxyisxgc.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJqbnNjb2F1Ym5haW94eWlzeGdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4ODU0ODEsImV4cCI6MjA2ODQ2MTQ4MX0.lT8NCYtCce9l8gVNJuUh0gKW-_wti3rxiCjIM2aP_fw';
+    const supabaseUrl = 'https://YOUR_PROJECT_ID.supabase.co';
+    const supabaseKey = 'YOUR_ANON_KEY';
     const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-    document.getElementById('themeToggle').addEventListener('click', () => {
+    const themeToggle = document.getElementById('themeToggle');
+    const adminToggle = document.getElementById('adminToggle');
+    const adminPanel = document.getElementById('adminPanel');
+
+    themeToggle.addEventListener('click', () => {
       document.documentElement.classList.toggle('dark');
     });
 
-    document.getElementById('adminToggle').addEventListener('click', () => {
+    adminToggle.addEventListener('click', () => {
       const entered = prompt('Enter admin passphrase:');
       if (entered === 'Joshua R is the best.') {
-        document.getElementById('adminPanel').classList.remove('hidden');
+        adminPanel.classList.remove('hidden');
+        populateDropdowns();
       } else {
         alert('Incorrect passphrase');
       }
     });
 
+    async function uploadImage(file) {
+      const fileName = `${Date.now()}_${file.name}`;
+      const { error } = await supabase.storage.from('images').upload(fileName, file);
+      if (error) return null;
+      const { data } = supabase.storage.from('images').getPublicUrl(fileName);
+      return data.publicUrl;
+    }
+
     async function fetchAndDisplay() {
       const { data: trays } = await supabase.from('trays').select('*');
       const { data: instruments } = await supabase.from('instruments').select('*');
+      const { data: links } = await supabase.from('tray_contents').select('*');
 
+      const trayMap = Object.fromEntries(trays.map(tray => [tray.id, tray.name]));
+      const instrumentMap = {};
+
+      // Clear containers
       const trayContainer = document.getElementById('trayContainer');
       trayContainer.innerHTML = '';
-      trays?.forEach(tray => {
+      trays.forEach(tray => {
         trayContainer.innerHTML += \`
           <div class="bg-white dark:bg-gray-800 p-4 rounded shadow hover:shadow-lg transition">
             <img src="\${tray.image_url || 'https://via.placeholder.com/400x200?text=Tray'}" class="rounded mb-2" />
@@ -86,59 +114,64 @@
 
       const instrumentContainer = document.getElementById('instrumentContainer');
       instrumentContainer.innerHTML = '';
-      instruments?.forEach(instr => {
+      instruments.forEach(instr => {
+        const related = links
+          .filter(link => link.instrument_id === instr.id)
+          .map(link => trayMap[link.tray_id])
+          .filter(Boolean)
+          .join(', ');
+
         instrumentContainer.innerHTML += \`
           <div class="bg-white dark:bg-gray-800 p-4 rounded shadow hover:shadow-lg transition">
             <img src="\${instr.image_url || 'https://via.placeholder.com/400x200?text=Instrument'}" class="rounded mb-2" />
             <h3 class="font-bold text-lg">\${instr.name}</h3>
             <p class="text-sm text-gray-500 dark:text-gray-300">Serial: \${instr.serial_number}</p>
+            <p class="text-sm mt-1">Also in: \${related || '—'}</p>
           </div>
         \`;
       });
     }
 
-    fetchAndDisplay();
+    async function populateDropdowns() {
+      const { data: trays } = await supabase.from('trays').select('id, name');
+      const { data: instruments } = await supabase.from('instruments').select('id, name');
 
-    async function uploadImage(file) {
-      const fileName = `${Date.now()}_${file.name}`;
-      const { data, error } = await supabase.storage.from('images').upload(fileName, file);
-      if (error) {
-        alert('Image upload failed');
-        return null;
-      }
-      const { data: publicUrlData } = supabase.storage.from('images').getPublicUrl(fileName);
-      return publicUrlData?.publicUrl || null;
+      const traySelect = document.getElementById('traySelect');
+      const instrumentSelect = document.getElementById('instrumentSelect');
+      traySelect.innerHTML = trays.map(t => \`<option value='\${t.id}'>\${t.name}</option>\`).join('');
+      instrumentSelect.innerHTML = instruments.map(i => \`<option value='\${i.id}'>\${i.name}</option>\`).join('');
     }
 
     document.getElementById('addTrayBtn').addEventListener('click', async () => {
       const name = document.getElementById('trayName').value;
       const location = document.getElementById('trayLocation').value;
-      const imageUrlInput = document.getElementById('trayImageUrl').value;
       const imageFile = document.getElementById('trayImageFile').files[0];
-      let imageUrl = imageUrlInput;
-
-      if (!imageUrl && imageFile) {
-        imageUrl = await uploadImage(imageFile);
-      }
-
+      let imageUrl = document.getElementById('trayImageUrl').value;
+      if (!imageUrl && imageFile) imageUrl = await uploadImage(imageFile);
       await supabase.from('trays').insert([{ name, location, image_url: imageUrl }]);
       fetchAndDisplay();
+      populateDropdowns();
     });
 
     document.getElementById('addInstrumentBtn').addEventListener('click', async () => {
       const name = document.getElementById('instrumentName').value;
-      const serial_number = document.getElementById('instrumentSerial').value;
-      const imageUrlInput = document.getElementById('instrumentImageUrl').value;
+      const serial = document.getElementById('instrumentSerial').value;
       const imageFile = document.getElementById('instrumentImageFile').files[0];
-      let imageUrl = imageUrlInput;
+      let imageUrl = document.getElementById('instrumentImageUrl').value;
+      if (!imageUrl && imageFile) imageUrl = await uploadImage(imageFile);
+      await supabase.from('instruments').insert([{ name, serial_number: serial, image_url: imageUrl }]);
+      fetchAndDisplay();
+      populateDropdowns();
+    });
 
-      if (!imageUrl && imageFile) {
-        imageUrl = await uploadImage(imageFile);
-      }
-
-      await supabase.from('instruments').insert([{ name, serial_number, image_url: imageUrl }]);
+    document.getElementById('linkBtn').addEventListener('click', async () => {
+      const tray_id = document.getElementById('traySelect').value;
+      const instrument_id = document.getElementById('instrumentSelect').value;
+      await supabase.from('tray_contents').insert([{ tray_id, instrument_id }]);
       fetchAndDisplay();
     });
+
+    fetchAndDisplay();
   </script>
 </body>
 </html>
