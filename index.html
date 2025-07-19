@@ -1,13 +1,18 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TrayTracker</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    }
+  </script>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
+
   <header class="flex justify-between items-center p-4 shadow-md bg-white dark:bg-gray-800">
     <h1 class="text-2xl font-bold">TrayTracker</h1>
     <div class="space-x-2">
@@ -16,73 +21,58 @@
     </div>
   </header>
 
-  <main class="p-6 max-w-6xl mx-auto">
-    <div id="adminPanel" class="hidden mb-6">
-      <div class="mb-2 text-green-400">✅ Admin mode activated</div>
-      <button class="mb-4 px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">[Placeholder] Add Tray</button>
+  <main class="p-6">
+    <div class="max-w-xl mx-auto">
+      <div id="adminPanel" class="hidden mb-6">
+        <div class="mb-2 text-green-400">✅ Admin mode activated</div>
+        <button class="mb-4 px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">[Placeholder] Add Tray</button>
+        <!-- Additional admin tools can go here -->
+      </div>
+
+      <input type="text" placeholder="Search by instrument or tray..."
+             class="w-full p-3 border rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700" />
+
+      <section class="mt-6">
+        <h2 class="text-xl font-semibold mb-4">Sample Results</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Sample Tray Card -->
+          <div class="bg-white dark:bg-gray-800 p-4 rounded shadow hover:shadow-lg transition">
+            <img src="https://via.placeholder.com/400x200?text=Minor+Tray" alt="Minor Tray" class="rounded mb-2" />
+            <h3 class="font-bold text-lg">Minor Tray</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-300">Location: OR Clean Room</p>
+            <p class="mt-2 text-sm">Contains: Metzenbaum Scissors, Forceps, Retractors</p>
+          </div>
+
+          <!-- Sample Instrument Card -->
+          <div class="bg-white dark:bg-gray-800 p-4 rounded shadow hover:shadow-lg transition">
+            <img src="https://via.placeholder.com/400x200?text=Metzenbaum+Scissors" alt="Metzenbaum" class="rounded mb-2" />
+            <h3 class="font-bold text-lg">Metzenbaum Scissors</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-300">Serial: 123456</p>
+            <p class="mt-2 text-sm">Also in: Minor Tray, C-Section Tray, Laparoscopy Pouch</p>
+          </div>
+        </div>
+      </section>
     </div>
-
-    <section>
-      <h2 class="text-xl font-semibold mb-4">Trays</h2>
-      <div id="trayContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-    </section>
-
-    <section class="mt-10">
-      <h2 class="text-xl font-semibold mb-4">Instruments</h2>
-      <div id="instrumentContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-    </section>
   </main>
 
   <script>
-    const supabaseUrl = 'https://rjnscoaubnaioxyisxgc.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJqbnNjb2F1Ym5haW94eWlzeGdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4ODU0ODEsImV4cCI6MjA2ODQ2MTQ4MX0.lT8NCYtCce9l8gVNJuUh0gKW-_wti3rxiCjIM2aP_fw';
-    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+    // Dark/Light Theme Toggle
+    const toggle = document.getElementById('themeToggle');
+    toggle?.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+    });
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      const adminToggle = document.getElementById('adminToggle');
-      const adminPanel = document.getElementById('adminPanel');
-      const themeToggle = document.getElementById('themeToggle');
-
-      adminToggle.addEventListener('click', () => {
-        const entered = prompt('Enter admin passphrase:');
-        if (entered === 'Joshua R is the best.') {
-          adminPanel.classList.remove('hidden');
-        } else {
-          alert('Incorrect passphrase');
-        }
-      });
-
-      themeToggle.addEventListener('click', () => {
-        document.documentElement.classList.toggle('dark');
-      });
-
-      const traysContainer = document.getElementById('trayContainer');
-      const { data: trays, error: trayError } = await supabase.from('trays').select('*');
-      if (trayError) console.error('Tray fetch error:', trayError);
-      trays?.forEach(tray => {
-        const card = document.createElement('div');
-        card.className = "bg-white dark:bg-gray-800 p-4 rounded shadow hover:shadow-lg transition";
-        card.innerHTML = \`
-          <img src="\${tray.image_url || 'https://via.placeholder.com/400x200?text=Tray'}" class="rounded mb-2" />
-          <h3 class="font-bold text-lg">\${tray.name}</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-300">Location: \${tray.location || 'N/A'}</p>
-        \`;
-        traysContainer.appendChild(card);
-      });
-
-      const instrumentsContainer = document.getElementById('instrumentContainer');
-      const { data: instruments, error: instrumentError } = await supabase.from('instruments').select('*');
-      if (instrumentError) console.error('Instrument fetch error:', instrumentError);
-      instruments?.forEach(instr => {
-        const card = document.createElement('div');
-        card.className = "bg-white dark:bg-gray-800 p-4 rounded shadow hover:shadow-lg transition";
-        card.innerHTML = \`
-          <img src="\${instr.image_url || 'https://via.placeholder.com/400x200?text=Instrument'}" class="rounded mb-2" />
-          <h3 class="font-bold text-lg">\${instr.name}</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-300">Serial: \${instr.serial_number}</p>
-        \`;
-        instrumentsContainer.appendChild(card);
-      });
+    // Admin Button + Passphrase
+    const adminBtn = document.getElementById('adminToggle');
+    const adminPanel = document.getElementById('adminPanel');
+    adminBtn?.addEventListener('click', () => {
+      const entered = prompt('Enter admin passphrase:');
+      if (entered === 'Joshua R is the best.') {
+        adminPanel.classList.remove('hidden');
+      } else {
+        alert('Incorrect passphrase');
+      }
     });
   </script>
 </body>
