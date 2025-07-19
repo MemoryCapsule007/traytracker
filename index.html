@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TrayTracker</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
   <header class="flex justify-between items-center p-4 shadow-md bg-white dark:bg-gray-800">
@@ -19,7 +20,6 @@
     <div id="adminPanel" class="hidden mb-6">
       <div class="mb-2 text-green-400">✅ Admin mode activated</div>
       <button class="mb-4 px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">[Placeholder] Add Tray</button>
-      <!-- Add more admin tools here -->
     </div>
 
     <section>
@@ -33,23 +33,17 @@
     </section>
   </main>
 
-  <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-
-    const supabaseUrl = 'https://rjnscoaubnaioxyisxgc.supabase.co'
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJqbnNjb2F1Ym5haW94eWlzeGdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4ODU0ODEsImV4cCI6MjA2ODQ2MTQ4MX0.lT8NCYtCce9l8gVNJuUh0gKW-_wti3rxiCjIM2aP_fw'
-    const supabase = createClient(supabaseUrl, supabaseKey)
+  <script>
+    const supabaseUrl = 'https://YOUR_PROJECT_ID.supabase.co';
+    const supabaseKey = 'YOUR_ANON_KEY';
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
     document.addEventListener('DOMContentLoaded', async () => {
-      // Theme toggle
-      document.getElementById('themeToggle')?.addEventListener('click', () => {
-        document.documentElement.classList.toggle('dark');
-      });
-
-      // Admin toggle with passphrase
-      const adminBtn = document.getElementById('adminToggle');
+      const adminToggle = document.getElementById('adminToggle');
       const adminPanel = document.getElementById('adminPanel');
-      adminBtn.addEventListener('click', () => {
+      const themeToggle = document.getElementById('themeToggle');
+
+      adminToggle.addEventListener('click', () => {
         const entered = prompt('Enter admin passphrase:');
         if (entered === 'Joshua R is the best.') {
           adminPanel.classList.remove('hidden');
@@ -58,9 +52,13 @@
         }
       });
 
-      // Load trays
+      themeToggle.addEventListener('click', () => {
+        document.documentElement.classList.toggle('dark');
+      });
+
       const traysContainer = document.getElementById('trayContainer');
-      const { data: trays } = await supabase.from('trays').select('*');
+      const { data: trays, error: trayError } = await supabase.from('trays').select('*');
+      if (trayError) console.error('Tray fetch error:', trayError);
       trays?.forEach(tray => {
         const card = document.createElement('div');
         card.className = "bg-white dark:bg-gray-800 p-4 rounded shadow hover:shadow-lg transition";
@@ -72,9 +70,9 @@
         traysContainer.appendChild(card);
       });
 
-      // Load instruments
       const instrumentsContainer = document.getElementById('instrumentContainer');
-      const { data: instruments } = await supabase.from('instruments').select('*');
+      const { data: instruments, error: instrumentError } = await supabase.from('instruments').select('*');
+      if (instrumentError) console.error('Instrument fetch error:', instrumentError);
       instruments?.forEach(instr => {
         const card = document.createElement('div');
         card.className = "bg-white dark:bg-gray-800 p-4 rounded shadow hover:shadow-lg transition";
