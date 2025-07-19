@@ -1,18 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TrayTracker</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class'
-    }
-  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
-
   <header class="flex justify-between items-center p-4 shadow-md bg-white dark:bg-gray-800">
     <h1 class="text-2xl font-bold">TrayTracker</h1>
     <div class="space-x-2">
@@ -21,58 +16,128 @@
     </div>
   </header>
 
-  <main class="p-6">
-    <div class="max-w-xl mx-auto">
-      <div id="adminPanel" class="hidden mb-6">
-        <div class="mb-2 text-green-400">✅ Admin mode activated</div>
-        <button class="mb-4 px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">[Placeholder] Add Tray</button>
-        <!-- Additional admin tools can go here -->
+  <main class="p-6 max-w-6xl mx-auto">
+    <div id="adminPanel" class="hidden mb-6 space-y-4">
+      <div class="mb-2 text-green-400">✅ Admin mode activated</div>
+
+      <div class="bg-white dark:bg-gray-800 p-4 rounded shadow space-y-2">
+        <h2 class="font-bold text-lg">➕ Add Tray</h2>
+        <input id="trayName" type="text" placeholder="Tray Name" class="w-full p-2 border rounded dark:bg-gray-700" />
+        <input id="trayLocation" type="text" placeholder="Location" class="w-full p-2 border rounded dark:bg-gray-700" />
+        <input id="trayImageUrl" type="text" placeholder="Image URL (optional)" class="w-full p-2 border rounded dark:bg-gray-700" />
+        <input id="trayImageFile" type="file" accept="image/*" class="w-full p-2 dark:bg-gray-700" />
+        <button id="addTrayBtn" class="w-full px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">Add Tray</button>
       </div>
 
-      <input type="text" placeholder="Search by instrument or tray..."
-             class="w-full p-3 border rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700" />
-
-      <section class="mt-6">
-        <h2 class="text-xl font-semibold mb-4">Sample Results</h2>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Sample Tray Card -->
-          <div class="bg-white dark:bg-gray-800 p-4 rounded shadow hover:shadow-lg transition">
-            <img src="https://via.placeholder.com/400x200?text=Minor+Tray" alt="Minor Tray" class="rounded mb-2" />
-            <h3 class="font-bold text-lg">Minor Tray</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-300">Location: OR Clean Room</p>
-            <p class="mt-2 text-sm">Contains: Metzenbaum Scissors, Forceps, Retractors</p>
-          </div>
-
-          <!-- Sample Instrument Card -->
-          <div class="bg-white dark:bg-gray-800 p-4 rounded shadow hover:shadow-lg transition">
-            <img src="https://via.placeholder.com/400x200?text=Metzenbaum+Scissors" alt="Metzenbaum" class="rounded mb-2" />
-            <h3 class="font-bold text-lg">Metzenbaum Scissors</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-300">Serial: 123456</p>
-            <p class="mt-2 text-sm">Also in: Minor Tray, C-Section Tray, Laparoscopy Pouch</p>
-          </div>
-        </div>
-      </section>
+      <div class="bg-white dark:bg-gray-800 p-4 rounded shadow space-y-2">
+        <h2 class="font-bold text-lg">➕ Add Instrument</h2>
+        <input id="instrumentName" type="text" placeholder="Instrument Name" class="w-full p-2 border rounded dark:bg-gray-700" />
+        <input id="instrumentSerial" type="text" placeholder="Serial Number" class="w-full p-2 border rounded dark:bg-gray-700" />
+        <input id="instrumentImageUrl" type="text" placeholder="Image URL (optional)" class="w-full p-2 border rounded dark:bg-gray-700" />
+        <input id="instrumentImageFile" type="file" accept="image/*" class="w-full p-2 dark:bg-gray-700" />
+        <button id="addInstrumentBtn" class="w-full px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">Add Instrument</button>
+      </div>
     </div>
+
+    <section>
+      <h2 class="text-xl font-semibold mb-4">Trays</h2>
+      <div id="trayContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <section class="mt-10">
+      <h2 class="text-xl font-semibold mb-4">Instruments</h2>
+      <div id="instrumentContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </section>
   </main>
 
   <script>
-    // Dark/Light Theme Toggle
-    const toggle = document.getElementById('themeToggle');
-    toggle?.addEventListener('click', () => {
+    const supabaseUrl = 'https://YOUR_PROJECT_ID.supabase.co';
+    const supabaseKey = 'YOUR_ANON_KEY';
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
       document.documentElement.classList.toggle('dark');
     });
 
-    // Admin Button + Passphrase
-    const adminBtn = document.getElementById('adminToggle');
-    const adminPanel = document.getElementById('adminPanel');
-    adminBtn?.addEventListener('click', () => {
+    document.getElementById('adminToggle').addEventListener('click', () => {
       const entered = prompt('Enter admin passphrase:');
       if (entered === 'Joshua R is the best.') {
-        adminPanel.classList.remove('hidden');
+        document.getElementById('adminPanel').classList.remove('hidden');
       } else {
         alert('Incorrect passphrase');
       }
+    });
+
+    async function fetchAndDisplay() {
+      const { data: trays } = await supabase.from('trays').select('*');
+      const { data: instruments } = await supabase.from('instruments').select('*');
+
+      const trayContainer = document.getElementById('trayContainer');
+      trayContainer.innerHTML = '';
+      trays?.forEach(tray => {
+        trayContainer.innerHTML += \`
+          <div class="bg-white dark:bg-gray-800 p-4 rounded shadow hover:shadow-lg transition">
+            <img src="\${tray.image_url || 'https://via.placeholder.com/400x200?text=Tray'}" class="rounded mb-2" />
+            <h3 class="font-bold text-lg">\${tray.name}</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-300">Location: \${tray.location}</p>
+          </div>
+        \`;
+      });
+
+      const instrumentContainer = document.getElementById('instrumentContainer');
+      instrumentContainer.innerHTML = '';
+      instruments?.forEach(instr => {
+        instrumentContainer.innerHTML += \`
+          <div class="bg-white dark:bg-gray-800 p-4 rounded shadow hover:shadow-lg transition">
+            <img src="\${instr.image_url || 'https://via.placeholder.com/400x200?text=Instrument'}" class="rounded mb-2" />
+            <h3 class="font-bold text-lg">\${instr.name}</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-300">Serial: \${instr.serial_number}</p>
+          </div>
+        \`;
+      });
+    }
+
+    fetchAndDisplay();
+
+    async function uploadImage(file) {
+      const fileName = `${Date.now()}_${file.name}`;
+      const { data, error } = await supabase.storage.from('images').upload(fileName, file);
+      if (error) {
+        alert('Image upload failed');
+        return null;
+      }
+      const { data: publicUrlData } = supabase.storage.from('images').getPublicUrl(fileName);
+      return publicUrlData?.publicUrl || null;
+    }
+
+    document.getElementById('addTrayBtn').addEventListener('click', async () => {
+      const name = document.getElementById('trayName').value;
+      const location = document.getElementById('trayLocation').value;
+      const imageUrlInput = document.getElementById('trayImageUrl').value;
+      const imageFile = document.getElementById('trayImageFile').files[0];
+      let imageUrl = imageUrlInput;
+
+      if (!imageUrl && imageFile) {
+        imageUrl = await uploadImage(imageFile);
+      }
+
+      await supabase.from('trays').insert([{ name, location, image_url: imageUrl }]);
+      fetchAndDisplay();
+    });
+
+    document.getElementById('addInstrumentBtn').addEventListener('click', async () => {
+      const name = document.getElementById('instrumentName').value;
+      const serial_number = document.getElementById('instrumentSerial').value;
+      const imageUrlInput = document.getElementById('instrumentImageUrl').value;
+      const imageFile = document.getElementById('instrumentImageFile').files[0];
+      let imageUrl = imageUrlInput;
+
+      if (!imageUrl && imageFile) {
+        imageUrl = await uploadImage(imageFile);
+      }
+
+      await supabase.from('instruments').insert([{ name, serial_number, image_url: imageUrl }]);
+      fetchAndDisplay();
     });
   </script>
 </body>
